@@ -1,4 +1,6 @@
 import React, { Component } from 'react';
+import _ from 'lodash';
+
 import Particles from 'react-particles-js';
 import FaceRecognition from './components/FaceRecognition/FaceRecognition';
 import Navigation from './components/Navigation/Navigation';
@@ -53,20 +55,29 @@ class App extends Component {
   }
 
   calculateFaceLocation = (data) => {
-    const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
+    const { regions } = data.outputs[0].data;
     const image = document.getElementById('inputimage');
     const width = Number(image.width);
     const height = Number(image.height);
-    return {
-      leftCol: clarifaiFace.left_col * width,
-      topRow: clarifaiFace.top_row * height,
-      rightCol: width - (clarifaiFace.right_col * width),
-      bottomRow: height - (clarifaiFace.bottom_row * height)
-    }
+
+    const results = _.map(regions, item => {
+      const clarifaiFace = item.region_info.bounding_box;
+
+      return {
+        leftCol: clarifaiFace.left_col * width,
+        topRow: clarifaiFace.top_row * height,
+        rightCol: width - (clarifaiFace.right_col * width),
+        bottomRow: height - (clarifaiFace.bottom_row * height)
+      }
+    })
+
+    // const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
+    return results;
+    
   }
 
-  displayFaceBox = (box) => {
-    this.setState({box: box});
+  displayFaceBox = (boxes) => {
+    this.setState({boxes: boxes});
   }
 
   onInputChange = (event) => {
@@ -74,7 +85,7 @@ class App extends Component {
   }
 
   onButtonSubmit = () => {
-    this.setState({imageUrl: this.state.input});
+    this.setState({ imageUrl: this.state.input, boxes: [] });
       fetch('http://localhost:3000/imageurl', {
         method: 'post',
         headers: {'Content-Type': 'application/json'},
@@ -96,9 +107,10 @@ class App extends Component {
             .then(count => {
               this.setState(Object.assign(this.state.user, { entries: count}))
             })
-            .catch(console.log)
+            .catch(console.log())
 
         }
+        
         this.displayFaceBox(this.calculateFaceLocation(response))
       })
       .catch(err => console.log(err));
@@ -114,7 +126,8 @@ class App extends Component {
   }
 
   render() {
-    const { isSignedIn, imageUrl, route, box } = this.state;
+    const { isSignedIn, imageUrl, route, boxes } = this.state;
+    console.log({ boxes });
     return (
       <div className="App">
          <Particles className='particles'
@@ -132,7 +145,7 @@ class App extends Component {
                 onInputChange={this.onInputChange}
                 onButtonSubmit={this.onButtonSubmit}
               />
-              <FaceRecognition box={box} imageUrl={imageUrl} />
+              <FaceRecognition boxes={boxes} imageUrl={imageUrl} />
             </div>
           : (
              route === 'signin'
